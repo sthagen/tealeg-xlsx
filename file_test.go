@@ -462,11 +462,11 @@ func TestFile(t *testing.T) {
 
 		// sheets
 		expectedSheet1 := `<?xml version="1.0" encoding="UTF-8"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"></pageSetUpPr></sheetPr><dimension ref="A1"></dimension><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="true" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"></selection></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"></sheetFormatPr><sheetData><row r="1" ht="0" customHeight="true"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>`
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"></pageSetUpPr></sheetPr><dimension ref="A1"></dimension><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="true" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"></selection></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"></sheetFormatPr><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>`
 		c.Assert(parts["xl/worksheets/sheet1.xml"], qt.Equals, expectedSheet1)
 
 		expectedSheet2 := `<?xml version="1.0" encoding="UTF-8"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"></pageSetUpPr></sheetPr><dimension ref="A1"></dimension><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="false" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"></selection></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"></sheetFormatPr><sheetData><row r="1" ht="0" customHeight="true"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>`
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"></pageSetUpPr></sheetPr><dimension ref="A1"></dimension><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="false" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"></selection></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"></sheetFormatPr><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>`
 		c.Assert(parts["xl/worksheets/sheet2.xml"], qt.Equals, expectedSheet2)
 
 		// .rels.xml
@@ -1159,6 +1159,22 @@ func TestSliceReader(t *testing.T) {
 		fileToSliceCheckOutput(c, output)
 	})
 
+	csRunO(c, "TestFileToSliceValueOnly", func(c *qt.C, option FileOption) {
+		output, err := FileToSlice("./testdocs/testFileToSliceValueOnly.xlsx", ValueOnly())
+		c.Assert(err, qt.IsNil)
+		// Because this option changes the structure of the XML inline, we get slightly different, but valid results.
+		c.Assert(len(output), qt.Equals, 3)
+		c.Assert(len(output[0]), qt.Equals, 2)
+		c.Assert(len(output[0][0]), qt.Equals, 7)
+		c.Assert(output[0][0][0], qt.Equals, "Foo")
+		c.Assert(output[0][0][1], qt.Equals, "Bar")
+		c.Assert(len(output[0][1]), qt.Equals, 5)
+		c.Assert(output[0][1][0], qt.Equals, "Baz")
+		c.Assert(output[0][1][1], qt.Equals, "Quuk")
+		c.Assert(len(output[1]), qt.Equals, 0)
+		c.Assert(len(output[2]), qt.Equals, 0)
+	})
+
 	csRunO(c, "TestFileToSliceMissingCol", func(c *qt.C, option FileOption) {
 		// Test xlsx file with the A column removed
 		// CellCacheSize = 1024 * 1024 * 1024
@@ -1186,6 +1202,28 @@ func TestSliceReader(t *testing.T) {
 		c.Assert(output[0][6][1], qt.Equals, "Happy New Year!")
 		c.Assert(output[0][1][0], qt.Equals, "01.01.2016")
 		c.Assert(output[0][2][0], qt.Equals, "01.01.2016")
+
+		csRunO(c, "#707 should be fixed", func(c *qt.C, option FileOption) {
+			// test merged cells again.
+			a := "A0A1"
+			bc := "B1C1B2C2"
+			de := "D0E0D1E1"
+			expect := [][]string{
+				{a, "B0", "C0", de, de},
+				{a, bc, bc, de, de},
+				{"A2", "B2", "C2", "D2", "E2"},
+			}
+			output, err := FileToSliceUnmerged("./testdocs/merged_cells2.xlsx", option)
+			c.Assert(err, qt.IsNil)
+			c.Assert(output, qt.HasLen, 1)
+			c.Assert(output[0], qt.HasLen, 3)
+			for i, row := range output[0] {
+				c.Assert(row, qt.HasLen, 5)
+				for j, v := range row {
+					c.Assert(v, qt.Equals, expect[i][j])
+				}
+			}
+		})
 	})
 
 	csRunO(c, "TestFileToSliceEmptyCells", func(c *qt.C, option FileOption) {

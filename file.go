@@ -27,6 +27,7 @@ type File struct {
 	DefinedNames         []*xlsxDefinedName
 	cellStoreConstructor CellStoreConstructor
 	rowLimit             int
+	valueOnly            bool
 }
 
 const NoRowLimit int = -1
@@ -38,6 +39,16 @@ type FileOption func(f *File)
 func RowLimit(n int) FileOption {
 	return func(f *File) {
 		f.rowLimit = n
+	}
+}
+
+// ValueOnly treats all NULL values as meaningless and it will delete all NULL value cells,
+// before decode worksheet.xml. this option can save memory and time when parsing files
+// with a large number of NULL values. But it may also cause accidental injury,
+// because NULL may not really be meaningless. Use with caution
+func ValueOnly() FileOption {
+	return func(f *File) {
+		f.valueOnly = true
 	}
 }
 
@@ -607,12 +618,16 @@ func (f *File) ToSlice() (output [][][]string, err error) {
 // ToSliceUnmerged returns the raw data contained in the File as three
 // dimensional slice (s. method ToSlice).
 // A covered cell become the value of its origin cell.
-// Example: table where A1:A2 merged.
-// | 01.01.2011 | Bread | 20 |
-// |            | Fish  | 70 |
+// Example: table where A1:A2 at row 0 and row 1 are merged.
+// | 2011        | Bread | 20 |
+// |             | Fish  | 70 |
+// | 2012 | 2013 | Egg   | 80 |
 // This sheet will be converted to the slice:
-// [  [01.01.2011 Bread 20]
-// 		[01.01.2011 Fish 70] ]
+// [
+//    [2011 2011 Bread 20]
+//    [2011 2011 Fish  70]
+//    [2012 2013 Egg   80]
+// ]
 func (f *File) ToSliceUnmerged() (output [][][]string, err error) {
 	output, err = f.ToSlice()
 	if err != nil {
@@ -621,23 +636,20 @@ func (f *File) ToSliceUnmerged() (output [][][]string, err error) {
 
 	for s, sheet := range f.Sheets {
 		err := sheet.ForEachRow(func(row *Row) error {
-			r := row.num
-			err := row.ForEachCell(func(cell *Cell) error {
-				c := cell.num
-				if cell.HMerge > 0 {
-					for i := c + 1; i <= c+cell.HMerge; i++ {
-						output[s][r][i] = output[s][r][c]
-					}
-				}
-
-				if cell.VMerge > 0 {
-					for i := r + 1; i <= r+cell.VMerge; i++ {
-						output[s][i][c] = output[s][r][c]
+			return row.ForEachCell(func(cell *Cell) error {
+				if cell.HMerge > 0 || cell.VMerge > 0 {
+					c, r := cell.GetCoordinates()
+					v := output[s][r][c]
+					for i := r; i <= r+cell.VMerge; i++ {
+						for j := c; j <= c+cell.HMerge; j++ {
+							if i != r || j != c {
+								output[s][i][j] = v
+							}
+						}
 					}
 				}
 				return nil
 			})
-			return err
 		})
 		if err != nil {
 			return output, err

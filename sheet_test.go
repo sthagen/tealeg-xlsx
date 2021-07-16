@@ -310,7 +310,7 @@ func TestSheet(t *testing.T) {
 		c.Assert(err, qt.IsNil)
 
 		expectedXLSXSheet := `<?xml version="1.0" encoding="UTF-8"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"/></sheetPr><dimension ref="A1"/><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="true" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"/><sheetData><row r="1" ht="0" customHeight="true"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>`
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"/></sheetPr><dimension ref="A1"/><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="true" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"/><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>`
 
 		c.Assert(output.String(), qt.Equals, expectedXLSXSheet)
 	})
@@ -331,7 +331,7 @@ func TestSheet(t *testing.T) {
 		c.Assert(err, qt.Equals, nil)
 
 		expectedXLSXSheet := `<?xml version="1.0" encoding="UTF-8"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"/></sheetPr><dimension ref="A1:B1"/><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="true" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"/><sheetData><row r="1" ht="0" customHeight="true"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row></sheetData></worksheet>`
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"><pageSetUpPr fitToPage="false"/></sheetPr><dimension ref="A1:B1"/><sheetViews><sheetView windowProtection="false" showFormulas="false" showGridLines="true" showRowColHeaders="true" showZeros="true" rightToLeft="false" tabSelected="true" showOutlineSymbols="true" defaultGridColor="true" view="normal" topLeftCell="A1" colorId="64" zoomScale="100" zoomScaleNormal="100" zoomScalePageLayoutView="100" workbookViewId="0"><selection pane="topLeft" activeCell="A1" activeCellId="0" sqref="A1"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="12.85"/><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row></sheetData></worksheet>`
 		c.Assert(buf.String(), qt.Equals, expectedXLSXSheet)
 	})
 	csRunO(c, "TestSetRowHeightCM", func(c *qt.C, option FileOption) {
@@ -617,7 +617,6 @@ func TestMakeXLSXSheet(t *testing.T) {
 		c.Assert(sheet.Cols.FindColByIndex(2).Min, qt.Equals, 2)
 	})
 
-
 	csRunO(c, "SetColAutoWidth", func(c *qt.C, option FileOption) {
 		file := NewFile(option)
 		sheet, _ := file.AddSheet("Sheet1")
@@ -627,22 +626,21 @@ func TestMakeXLSXSheet(t *testing.T) {
 		cell12 := row.AddCell()
 		cell12.Value = "something else"
 
-		sheet.SetColAutoWidth(0, DefaultAutoWidth)
+		sheet.SetColAutoWidth(1, DefaultAutoWidth)
 
-		scaleFunc := func (s string) float64 {
+		scaleFunc := func(s string) float64 {
 			return float64(strings.Count(s, "")) * 1.5
 		}
-		sheet.SetColAutoWidth(1, scaleFunc)
+		sheet.SetColAutoWidth(2, scaleFunc)
 
-		c.Assert(*sheet.Cols.FindColByIndex(0).Width, qt.Equals, 12.0)
-		c.Assert(sheet.Cols.FindColByIndex(0).Max, qt.Equals, 0)
-		c.Assert(sheet.Cols.FindColByIndex(0).Min, qt.Equals, 0)
-
-		c.Assert(*sheet.Cols.FindColByIndex(1).Width, qt.Equals, 22.5)
+		c.Assert(*sheet.Cols.FindColByIndex(1).Width, qt.Equals, 12.0)
 		c.Assert(sheet.Cols.FindColByIndex(1).Max, qt.Equals, 1)
 		c.Assert(sheet.Cols.FindColByIndex(1).Min, qt.Equals, 1)
-	})
 
+		c.Assert(*sheet.Cols.FindColByIndex(2).Width, qt.Equals, 22.5)
+		c.Assert(sheet.Cols.FindColByIndex(2).Max, qt.Equals, 2)
+		c.Assert(sheet.Cols.FindColByIndex(2).Min, qt.Equals, 2)
+	})
 
 	csRunO(c, "SetDataValidation", func(c *qt.C, option FileOption) {
 		file := NewFile(option)
